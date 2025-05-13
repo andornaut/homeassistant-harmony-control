@@ -1,0 +1,590 @@
+# =============================
+# Home Assistant Harmony Remote
+# SparkFun Thing Plus ESP32 WROOM (USB-C)
+# =============================
+
+esphome:
+  name: ha-harmony-remote-07d6c2
+  friendly_name: ha-harmony-remote
+  min_version: 2024.11.0
+  name_add_mac_suffix: false
+  on_boot:
+    - priority: 250
+      then:
+        - lambda: |-
+            id(last_active) = millis() / 1000;
+
+            auto cause = esp_sleep_get_wakeup_cause();
+            if (cause == ESP_SLEEP_WAKEUP_EXT0) {
+              ESP_LOGI("main", "Device woke up by EXT0");
+            } else if (cause == ESP_SLEEP_WAKEUP_TIMER) {
+              ESP_LOGD("main", "Device woke up by timer.");
+            } else {
+              ESP_LOGD("main", "Device woke up by other cause: %d", cause);
+            }
+        # - if:
+        #     condition:
+        #       binary_sensor.is_on: low_battery
+        #     then:
+        #       - repeat:
+        #           count: 3
+        #           then:
+        #             - light.turn_on: user_led_light
+        #             - delay: 200ms
+        #             - light.turn_off: user_led_light
+        #             - delay: 200ms
+    - priority: 600
+      then:
+        - delay: 3s
+
+esp32:
+  board: esp32dev
+  framework:
+    # This is the default and most widely supported option for ESPHome, which has the best compatibility with ESPHome features
+    type: arduino
+    # This is the native Espressif SDK, which is sometimes needed for advanced features or certain peripherals
+    #type: esp-idf
+
+logger:
+  # https://esphome.io/components/logger.html#logger-log-levels
+  #INFO is the default
+  level: DEBUG
+
+# Enable Home Assistant API
+api:
+
+# Allow Over-The-Air updates
+ota:
+  - platform: esphome
+
+wifi:
+  fast_connect: true
+  ssid: !secret wifi_water_ssid
+  password: !secret wifi_water_password
+
+# =============================
+# Boilter plate above
+# Customziations below
+# =============================
+
+globals:
+  - id: last_active
+    type: int
+    restore_value: no
+    initial_value: "0"
+
+script:
+  - id: reset_idle_timer
+    then:
+      - lambda: |-
+          id(last_active) = millis() / 1000;
+  - id: handle_button_press
+    parameters:
+      button: string
+      short_or_long: string
+    then:
+      - script.execute: reset_idle_timer
+      - homeassistant.event:
+          event: esphome.remote_button_pressed
+          data:
+            button: !lambda "return button;"
+            short_or_long: !lambda "return short_or_long;"
+      # - light.turn_on: user_led_light
+      # - delay: 200ms
+      # - light.turn_off: user_led_light
+
+substitutions:
+  idle_timeout_in_secs: "600" # 10 minutes
+  sleep_duration: "10080min" # Deep sleep duration (1 week)
+
+interval:
+  - interval: 60s
+    then:
+      - if:
+          condition:
+            lambda: return (millis() / 1000) - id(last_active) >= ${idle_timeout_in_secs};
+          then:
+            - deep_sleep.enter: deep_sleep_ctrl
+
+# BUTTONS
+# You must add an external pull-up resistor (e.g., 10kΩ to 3.3V) for reliable button operation on pins 34-39.
+# Specify `pullup: true` for all other buttons/pins.
+# Quote: "ESP32: Only pins that support both input & output have integrated pull-up and pull-down resistors. Input-only GPIOs 34-39 do not."
+# Source: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/gpio.html
+binary_sensor:
+  - platform: gpio
+    pin:
+      # On the SparkFun Thing Plus ESP32 WROOM (USB-C) board, GPIO4 is typically used for the SD card interface.
+      # We're not using the SD card, so we can use it as a button.
+      number: GPIO4
+      mode:
+        input: true
+        pullup: true
+      allow_other_uses: true
+      inverted: true
+    name: Power
+    id: power
+    internal: true
+    on_press:
+      then:
+        - script.execute:
+            id: handle_button_press
+            button: power
+            short_or_long: short
+
+  - platform: gpio
+    pin:
+      # n.b. We MUST use `espefuse.py` to force 3.3V flash voltage in order to safely use GPIO12 for a button.
+      # If we do not do this, then the ESP32 may not boot normally if GPIO12 is pulled HIGH at boot.
+      number: GPIO12
+      mode:
+        input: true
+        pullup: true
+      allow_other_uses: true
+      inverted: true
+    name: Home
+    id: home
+    internal: true
+    on_press:
+      then:
+        - script.execute:
+            id: handle_button_press
+            button: home
+            short_or_long: short
+
+  - platform: gpio
+    pin:
+      number: GPIO13
+      mode:
+        input: true
+        pullup: true
+      allow_other_uses: true
+      inverted: true
+    name: Mute
+    id: mute
+    internal: true
+    on_press:
+      then:
+        - script.execute:
+            id: handle_button_press
+            button: mute
+            short_or_long: short
+
+  - platform: gpio
+    pin:
+      number: GPIO14
+      mode:
+        input: true
+        pullup: true
+      allow_other_uses: true
+      inverted: true
+    name: Shortcut 1
+    id: shortcut_1
+    internal: true
+    on_press:
+      then:
+        - script.execute:
+            id: handle_button_press
+            button: shortcut_1
+            short_or_long: short
+
+  - platform: gpio
+    pin:
+      number: GPIO16
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    name: Shortcut 2
+    id: shortcut_2
+    internal: true
+    on_press:
+      then:
+        - script.execute:
+            id: handle_button_press
+            button: shortcut_2
+            short_or_long: short
+
+  - platform: gpio
+    pin:
+      number: GPIO17
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    name: Shortcut 3
+    id: shortcut_3
+    internal: true
+    on_press:
+      then:
+        - script.execute:
+            id: handle_button_press
+            button: shortcut_3
+            short_or_long: short
+
+  - platform: gpio
+    pin:
+      number: GPIO18
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    name: Shortcut 4
+    id: shortcut_4
+    internal: true
+    on_press:
+      then:
+        - script.execute:
+            id: handle_button_press
+            button: shortcut_4
+            short_or_long: short
+
+  - platform: gpio
+    pin:
+      number: GPIO19
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    name: Shortcut 5
+    id: shortcut_5
+    internal: true
+    on_press:
+      then:
+        - script.execute:
+            id: handle_button_press
+            button: shortcut_5
+            short_or_long: short
+
+  - platform: gpio
+    pin:
+      number: GPIO21
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    name: Shortcut 6
+    id: shortcut_6
+    internal: true
+    on_press:
+      then:
+        - script.execute:
+            id: handle_button_press
+            button: shortcut_6
+            short_or_long: short
+
+  - platform: gpio
+    pin:
+      number: GPIO22
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    name: Shortcut 7
+    id: shortcut_7
+    internal: true
+    on_press:
+      then:
+        - script.execute:
+            id: handle_button_press
+            button: shortcut_7
+            short_or_long: short
+
+  - platform: gpio
+    pin:
+      number: GPIO23
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    name: Shortcut 8
+    id: shortcut_8
+    internal: true
+    on_press:
+      then:
+        - script.execute:
+            id: handle_button_press
+            button: shortcut_8
+            short_or_long: short
+
+  - platform: gpio
+    pin:
+      number: GPIO25
+      mode:
+        input: true
+        pullup: true
+      allow_other_uses: true
+      inverted: true
+    name: Volume Up
+    id: volume_up
+    internal: true
+    on_multi_click:
+      - timing:
+          - ON for at most 350ms
+        then:
+          - script.execute:
+              id: handle_button_press
+              button: volume_up
+              short_or_long: short
+      - timing:
+          - ON for at least 500ms
+        then:
+          - script.execute:
+              id: handle_button_press
+              button: volume_up
+              short_or_long: long
+
+  - platform: gpio
+    pin:
+      number: GPIO26
+      mode:
+        input: true
+        pullup: true
+      allow_other_uses: true
+      inverted: true
+    name: Volume Down
+    id: volume_down
+    internal: true
+    on_multi_click:
+      - timing:
+          - ON for at most 350ms
+        then:
+          - script.execute:
+              id: handle_button_press
+              button: volume_down
+              short_or_long: short
+      - timing:
+          - ON for at least 500ms
+        then:
+          - script.execute:
+              id: handle_button_press
+              button: volume_down
+              short_or_long: long
+
+  - platform: gpio
+    pin:
+      number: GPIO27
+      mode:
+        input: true
+        pullup: true
+      allow_other_uses: true
+      inverted: true
+    name: Select
+    # `id: select` collides with the standard C library function `select()`, so we're using `select_button` instead.
+    id: select_button
+    internal: true
+    on_press:
+      then:
+        - script.execute:
+            id: handle_button_press
+            button: select
+            short_or_long: short
+
+  - platform: gpio
+    pin:
+      number: GPIO32
+      mode:
+        input: true
+        pullup: true
+      allow_other_uses: true
+      inverted: true
+    name: Back
+    id: back
+    internal: true
+    on_press:
+      then:
+        - script.execute:
+            id: handle_button_press
+            button: back
+            short_or_long: short
+
+  - platform: gpio
+    pin:
+      number: GPIO33
+      mode:
+        input: true
+        pullup: true
+      allow_other_uses: true
+      inverted: true
+    name: Left
+    id: left
+    internal: true
+    on_multi_click:
+      - timing:
+          - ON for at most 350ms
+        then:
+          - script.execute:
+              id: handle_button_press
+              button: left
+              short_or_long: short
+      - timing:
+          - ON for at least 500ms
+        then:
+          - script.execute:
+              id: handle_button_press
+              button: left
+              short_or_long: long
+
+  - platform: gpio
+    pin:
+      number: GPIO34
+      mode:
+        input: true
+        # Does not have an internal pull-up resistor
+      allow_other_uses: true
+      inverted: true
+    name: Right
+    id: right
+    internal: true
+    on_multi_click:
+      - timing:
+          - ON for at most 350ms
+        then:
+          - script.execute:
+              id: handle_button_press
+              button: right
+              short_or_long: short
+      - timing:
+          - ON for at least 500ms
+        then:
+          - script.execute:
+              id: handle_button_press
+              button: right
+              short_or_long: long
+
+  - platform: gpio
+    pin:
+      number: GPIO36
+      mode:
+        input: true
+        # Does not have an internal pull-up resistor
+      allow_other_uses: true
+      inverted: true
+    name: Up
+    id: up
+    internal: true
+    on_multi_click:
+      - timing:
+          - ON for at most 350ms
+        then:
+          - script.execute:
+              id: handle_button_press
+              button: up
+              short_or_long: short
+      - timing:
+          - ON for at least 500ms
+        then:
+          - script.execute:
+              id: handle_button_press
+              button: up
+              short_or_long: long
+
+  - platform: gpio
+    pin:
+      number: GPIO39
+      mode:
+        input: true
+        # Does not have an internal pull-up resistor
+      allow_other_uses: true
+      inverted: true
+    name: Down
+    id: down
+    internal: true
+    on_multi_click:
+      - timing:
+          - ON for at most 350ms
+        then:
+          - script.execute:
+              id: handle_button_press
+              button: down
+              short_or_long: short
+      - timing:
+          - ON for at least 500ms
+        then:
+          - script.execute:
+              id: handle_button_press
+              button: down
+              short_or_long: long
+
+  # Low battery warning
+  - platform: template
+    name: Low Battery
+    id: low_battery
+    lambda: |-
+      return id(battery_percent).state < 20;
+    device_class: battery
+    internal: false
+
+deep_sleep:
+  id: deep_sleep_ctrl
+  sleep_duration: ${sleep_duration}
+  # Only RTC GPIOs can be used for EXT1 wakeup. See: https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
+  # Only pins 0, 2, 4, 12, 13, 14, 15, 25, 26, 27, 32, 33, 34, 35, 36, 37, 38, 39 support wakeup.
+  # Avoid strapping pins: 0, 2, 4 (sdcard), 5 (flash chip select), 12, 15 (boot mode selection, must be LOW for normal boot)
+  esp32_ext1_wakeup:
+    pins:
+      - number: GPIO4 # Usually not used, because it can be used for SD card, but we're not using the SD card here
+        allow_other_uses: true
+      - number: GPIO12
+        allow_other_uses: true
+      - number: GPIO13
+        allow_other_uses: true
+      - number: GPIO14
+        allow_other_uses: true
+      - number: GPIO25
+        allow_other_uses: true
+      - number: GPIO26
+        allow_other_uses: true
+      - number: GPIO27
+        allow_other_uses: true
+      - number: GPIO32
+        allow_other_uses: true
+      - number: GPIO33
+        allow_other_uses: true
+      - number: GPIO34
+        allow_other_uses: true
+      # GPIO35 is used for battery_voltage, and so should not wake from sleep
+      - number: GPIO36
+        allow_other_uses: true
+      - number: GPIO39
+        allow_other_uses: true
+    mode: ANY_HIGH
+
+sensor:
+  - platform: adc
+    pin:
+      number: GPIO35
+    attenuation: 12db
+    name: "Battery Voltage"
+    id: battery_voltage
+    update_interval: never
+    filters:
+      - multiply: 2.0 # Onboard voltage divider correction
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+
+  - platform: template
+    name: "Battery Percentage"
+    id: battery_percent
+    lambda: |-
+      // 4.2V = 100%, 3.0V = 0%
+      float v = id(battery_voltage).state;
+      float pct = (v - 3.0) / (4.2 - 3.0) * 100.0;
+      if (pct > 100.0) pct = 100.0;
+      if (pct < 0.0) pct = 0.0;
+      return pct;
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    update_interval: never
+# output:
+#   - platform: gpio
+#     # Used by "mute" button
+#     pin: GPIO13
+#     id: user_led
+
+# light:
+#   - platform: binary
+#     name: "User LED"
+#     output: user_led
+#     id: user_led_light
+#     internal: true

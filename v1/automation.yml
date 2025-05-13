@@ -1,0 +1,211 @@
+alias: Harmony Remote
+description: Harmony Remote button press automation
+triggers:
+  - trigger: event
+    event_type: esphome.remote_button_pressed
+conditions: []
+actions:
+  - sequence:
+      - action: logbook.log
+        data:
+          entity_id: "{{ this.entity_id }}"
+          message: >-
+            Remote button pressed: {{ trigger.event.data.button }}, press_type:
+            {{  trigger.event.data.press_type }}
+          name: "{{ this.attributes.friendly_name }}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'power'}}"
+            sequence:
+              - action: remote.send_command
+                data:
+                  command: POWER
+                  hold_secs: 0.3
+                target:
+                  entity_id: remote.{{entity_id_suffix}}_remote
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'up'}}"
+            sequence:
+              - action: remote.send_command
+                data:
+                  command: DPAD_UP
+                  hold_secs: 0.3
+                target:
+                  entity_id: remote.{{entity_id_suffix}}_remote
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'left'}}"
+            sequence:
+              - action: remote.send_command
+                data:
+                  command: DPAD_LEFT
+                  hold_secs: 0.3
+                target:
+                  entity_id: remote.{{entity_id_suffix}}_remote
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'select'}}"
+            sequence:
+              - action: remote.send_command
+                data:
+                  command: DPAD_CENTER
+                  hold_secs: 0.3
+                target:
+                  entity_id: remote.{{entity_id_suffix}}_remote
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'right'}}"
+            sequence:
+              - action: remote.send_command
+                data:
+                  command: DPAD_RIGHT
+                  hold_secs: 0.3
+                target:
+                  entity_id: remote.{{entity_id_suffix}}_remote
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'back'}}"
+            sequence:
+              - action: remote.send_command
+                data:
+                  command: BACK
+                  hold_secs: 0.3
+                target:
+                  entity_id: remote.{{entity_id_suffix}}_remote
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'down'}}"
+            sequence:
+              - action: remote.send_command
+                data:
+                  command: DPAD_DOWN
+                  hold_secs: 0.3
+                target:
+                  entity_id: remote.{{entity_id_suffix}}_remote
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'home'}}"
+            sequence:
+              - action: remote.send_command
+                data:
+                  command: HOME
+                  hold_secs: 0.3
+                target:
+                  entity_id: remote.{{entity_id_suffix}}_remote
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'mute'}}"
+            sequence:
+              - action: remote.send_command
+                data:
+                  command: MUTE
+                  hold_secs: 0.3
+                target:
+                  entity_id: remote.{{entity_id_suffix}}_remote
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'volume_down'}}"
+            sequence:
+              - action: remote.send_command
+                data:
+                  command: VOLUME_DOWN
+                  hold_secs: 0.3
+                target:
+                  entity_id: remote.{{entity_id_suffix}}_remote
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'volume_up'}}"
+            sequence:
+              - action: remote.send_command
+                data:
+                  command: VOLUME_UP
+                  hold_secs: 0.3
+                target:
+                  entity_id: remote.{{entity_id_suffix}}_remote
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'shortcut_1'}}"
+            sequence:
+              action: androidtv.adb_command
+              data:
+                command: >-
+                  am start -a android.intent.action.VIEW -d
+                  rtsp://[[birdseye_hostname]]:8554/birdseye  -n
+                  org.videolan.vlc/.gui.video.VideoPlayerActivity
+              target:
+                entity_id: media_player.{{entity_id_suffix}}_android_tv
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'shortcut_2'}}"
+            sequence:
+              action: media_player.play_media
+              data:
+                media_content_id: Gem
+                media_content_type: app
+              target:
+                entity_id: media_player.{{entity_id_suffix}}
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'shortcut_3'}}"
+            sequence:
+              action: media_player.play_media
+              data:
+                media_content_id: crave
+                media_content_type: app
+              target:
+                entity_id: media_player.{{entity_id_suffix}}
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'shortcut_4'}}"
+            sequence:
+              action: media_player.play_media
+              data:
+                media_content_id: Netflix
+                media_content_type: app
+              target:
+                entity_id: media_player.{{entity_id_suffix}}
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'shortcut_5'}}"
+            sequence:
+              # TODO set receive to Switch
+              action: media_player.select_source
+              data:
+                source: HDMI 3 (eARC/ARC)
+              target:
+                entity_id: media_player.{{entity_id_suffix}}
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'shortcut_6'}}"
+            sequence:
+              action: media_player.play_media
+              data:
+                media_content_id: VLC
+                media_content_type: app
+              target:
+                entity_id: media_player.{{entity_id_suffix}}
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'shortcut_7'}}"
+            sequence:
+              # TODO set receive to Xbox
+              action: media_player.select_source
+              data:
+                source: HDMI 3 (eARC/ARC)
+              target:
+                entity_id: media_player.{{entity_id_suffix}}
+          - conditions:
+              - condition: template
+                value_template: "{{trigger.event.data.button == 'shortcut_8'}}"
+            sequence:
+              action: media_player.play_media
+              data:
+                media_content_id: YouTube
+                media_content_type: app
+              target:
+                entity_id: media_player.{{entity_id_suffix}}
+variables:
+  entity_id_suffix: living_room_tv
+mode: parallel
