@@ -1,4 +1,4 @@
-# homeassistant-harmony-control
+# homeassistant-harmony-remote
 
 Physical remote control for Home Assistant
 
